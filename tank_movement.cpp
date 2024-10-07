@@ -134,6 +134,28 @@ Position randomMove(Position current, const std::vector<std::vector<int>>& map) 
     return current;  // Si no hay movimientos válidos, quedarse en el mismo lugar
 }
 
+// Implementación de movimiento aleatorio extendido
+std::vector<Position> randomPath(Position start, Position goal, const std::vector<std::vector<int>>& map) {
+    std::vector<Position> path;
+    Position current = start;
+    path.push_back(current);
+
+    // Continuar moviéndose hasta que el tanque llegue a la meta o no pueda moverse
+    while (current.row != goal.row || current.col != goal.col) {
+        Position nextMove = randomMove(current, map);
+
+        // Si no se puede mover más, detenerse
+        if (nextMove.row == current.row && nextMove.col == current.col) {
+            break;
+        }
+
+        path.push_back(nextMove);
+        current = nextMove;
+    }
+
+    return path;
+}
+
 // Función para decidir el tipo de movimiento según las reglas del juego
 std::vector<Position> calculateMove(Position start, Position goal, const std::vector<std::vector<int>>& map, bool useBFS, bool useDijkstra) {
     if (useBFS) {
@@ -144,8 +166,49 @@ std::vector<Position> calculateMove(Position start, Position goal, const std::ve
         return dijkstra(start, goal, map);
     } else {
         std::cout << "Usando movimiento aleatorio.\n";
-        std::vector<Position> randomPath = {start, randomMove(start, map)};
-        return randomPath;
+        return randomPath(start, goal, map);  // Llamar a la nueva función de movimiento aleatorio extendido
+    }
+}
+
+// Función para agregar obstáculos manualmente
+void addObstacles(std::vector<std::vector<int>>& map) {
+    map[3][4] = 1;  // Obstáculo en la posición (3, 4)
+    map[4][4] = 1;  // Obstáculo en la posición (4, 4)
+    map[5][4] = 1;  // Obstáculo en la posición (5, 4)
+    map[2][8] = 1; 
+}
+
+// Función para imprimir el mapa con la ruta
+void printMapWithPath(const std::vector<std::vector<int>>& map, const std::vector<Position>& path, Position start, Position goal) {
+    std::vector<std::vector<char>> visualMap(ROWS, std::vector<char>(COLS, '.'));
+
+    // Colocar obstáculos en el mapa
+    for (int i = 0; i < ROWS; ++i) {
+        for (int j = 0; j < COLS; ++j) {
+            if (map[i][j] == 1) {
+                visualMap[i][j] = '#';
+            }
+        }
+    }
+
+    // Marcar el inicio y el objetivo
+    visualMap[start.row][start.col] = 'S';  // Start
+    visualMap[goal.row][goal.col] = 'G';    // Goal
+
+    // Marcar la ruta en el mapa
+    for (const Position& pos : path) {
+        if (visualMap[pos.row][pos.col] != 'S' && visualMap[pos.row][pos.col] != 'G') {
+            visualMap[pos.row][pos.col] = '*';  // Parte de la ruta
+        }
+    }
+
+    // Imprimir el mapa
+    std::cout << "\nMapa con la ruta:\n";
+    for (const auto& row : visualMap) {
+        for (char cell : row) {
+            std::cout << cell << ' ';
+        }
+        std::cout << '\n';
     }
 }
 
@@ -155,8 +218,11 @@ int main() {
     // Mapa de ejemplo (0 = libre, 1 = obstáculo)
     std::vector<std::vector<int>> map(ROWS, std::vector<int>(COLS, 0));
 
+    // Agregar obstáculos manualmente
+    addObstacles(map);
+
     Position start = {0, 0};  // Posición inicial del tanque
-    Position goal = {5, 5};   // Posición objetivo
+    Position goal = {8, 7};   // Posición objetivo
 
     // Simulación de las probabilidades de movimiento
     bool useBFS = rand() % 100 < 50;       // 50% de probabilidad de usar BFS
@@ -172,6 +238,9 @@ int main() {
     } else {
         std::cout << "No se encontró una ruta válida.\n";
     }
+
+    // Imprimir el mapa con la ruta
+    printMapWithPath(map, path, start, goal);
 
     return 0;
 }
