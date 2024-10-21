@@ -6,6 +6,8 @@
 #include <climits>
 #include <algorithm>  // Necesario para std::reverse
 
+using namespace std;
+
 const int ROWS = 10;  // Tamaño del mapa
 const int COLS = 10;  // Tamaño del mapa
 
@@ -27,15 +29,15 @@ struct Position {
 };
 
 // Función para verificar si la nueva posición es válida
-bool isValidMove(int row, int col, const std::vector<std::vector<int>>& map) {
+bool isValidMove(int row, int col, const vector<vector<int>>& map) {
     return (row >= 0 && row < ROWS && col >= 0 && col < COLS && map[row][col] == 0);  // Verifica que no haya obstáculo
 }
 
 // Implementación de BFS para encontrar el camino más corto
-std::vector<Position> bfs(Position start, Position goal, const std::vector<std::vector<int>>& map) {
-    std::vector<std::vector<bool>> visited(ROWS, std::vector<bool>(COLS, false));
-    std::vector<std::vector<Position>> previous(ROWS, std::vector<Position>(COLS, {-1, -1}));
-    std::queue<Position> q;
+vector<Position> bfs(Position start, Position goal, const vector<vector<int>>& map) {
+    vector<vector<bool>> visited(ROWS, vector<bool>(COLS, false));
+    vector<vector<Position>> previous(ROWS, vector<Position>(COLS, {-1, -1}));
+    queue<Position> q;
 
     q.push(start);
     visited[start.row][start.col] = true;
@@ -46,11 +48,11 @@ std::vector<Position> bfs(Position start, Position goal, const std::vector<std::
 
         if (current.row == goal.row && current.col == goal.col) {
             // Se ha encontrado la meta, reconstruir la ruta
-            std::vector<Position> path;
+            vector<Position> path;
             for (Position at = goal; at.row != -1; at = previous[at.row][at.col]) {
                 path.push_back(at);
             }
-            std::reverse(path.begin(), path.end());  // Revertir la ruta para obtener el camino correcto
+            reverse(path.begin(), path.end());  // Revertir la ruta para obtener el camino correcto
             return path;
         }
 
@@ -71,10 +73,10 @@ std::vector<Position> bfs(Position start, Position goal, const std::vector<std::
 }
 
 // Implementación de Dijkstra para encontrar el camino más corto en un grafo ponderado
-std::vector<Position> dijkstra(Position start, Position goal, const std::vector<std::vector<int>>& map) {
-    std::vector<std::vector<int>> dist(ROWS, std::vector<int>(COLS, INT_MAX));
-    std::vector<std::vector<Position>> previous(ROWS, std::vector<Position>(COLS, {-1, -1}));
-    std::priority_queue<std::pair<int, Position>, std::vector<std::pair<int, Position>>, std::greater<>> pq;
+vector<Position> dijkstra(Position start, Position goal, const vector<vector<int>>& map) {
+    vector<vector<int>> dist(ROWS, vector<int>(COLS, INT_MAX));
+    vector<vector<Position>> previous(ROWS, vector<Position>(COLS, {-1, -1}));
+    priority_queue<pair<int, Position>, vector<pair<int, Position>>, greater<>> pq;
 
     pq.push({0, start});
     dist[start.row][start.col] = 0;
@@ -86,11 +88,11 @@ std::vector<Position> dijkstra(Position start, Position goal, const std::vector<
 
         if (current.row == goal.row && current.col == goal.col) {
             // Se ha encontrado la meta, reconstruir la ruta
-            std::vector<Position> path;
+            vector<Position> path;
             for (Position at = goal; at.row != -1; at = previous[at.row][at.col]) {
                 path.push_back(at);
             }
-            std::reverse(path.begin(), path.end());  // Revertir la ruta
+            reverse(path.begin(), path.end());  // Revertir la ruta
             return path;
         }
 
@@ -113,8 +115,8 @@ std::vector<Position> dijkstra(Position start, Position goal, const std::vector<
 }
 
 // Implementación de movimiento aleatorio
-Position randomMove(Position current, const std::vector<std::vector<int>>& map) {
-    std::vector<Position> validMoves;
+Position randomMove(Position current, const vector<vector<int>>& map) {
+    vector<Position> validMoves;
 
     // Verificar todas las direcciones válidas
     for (int i = 0; i < 4; i++) {
@@ -135,8 +137,8 @@ Position randomMove(Position current, const std::vector<std::vector<int>>& map) 
 }
 
 // Implementación de movimiento aleatorio extendido
-std::vector<Position> randomPath(Position start, Position goal, const std::vector<std::vector<int>>& map) {
-    std::vector<Position> path;
+vector<Position> randomPath(Position start, Position goal, const vector<vector<int>>& map) {
+    vector<Position> path;
     Position current = start;
     path.push_back(current);
 
@@ -157,21 +159,21 @@ std::vector<Position> randomPath(Position start, Position goal, const std::vecto
 }
 
 // Función para decidir el tipo de movimiento según las reglas del juego
-std::vector<Position> calculateMove(Position start, Position goal, const std::vector<std::vector<int>>& map, bool useBFS, bool useDijkstra) {
+vector<Position> calculateMove(Position start, Position goal, const vector<vector<int>>& map, bool useBFS, bool useDijkstra) {
     if (useBFS) {
-        std::cout << "Usando BFS para calcular la ruta.\n";
+        cout << "Usando BFS para calcular la ruta.\n";
         return bfs(start, goal, map);
     } else if (useDijkstra) {
-        std::cout << "Usando Dijkstra para calcular la ruta.\n";
+        cout << "Usando Dijkstra para calcular la ruta.\n";
         return dijkstra(start, goal, map);
     } else {
-        std::cout << "Usando movimiento aleatorio.\n";
+        cout << "Usando movimiento aleatorio.\n";
         return randomPath(start, goal, map);  // Llamar a la nueva función de movimiento aleatorio extendido
     }
 }
 
 // Función para agregar obstáculos manualmente
-void addObstacles(std::vector<std::vector<int>>& map) {
+void addObstacles(vector<vector<int>>& map) {
     map[3][4] = 1;  // Obstáculo en la posición (3, 4)
     map[4][4] = 1;  // Obstáculo en la posición (4, 4)
     map[5][4] = 1;  // Obstáculo en la posición (5, 4)
@@ -179,8 +181,8 @@ void addObstacles(std::vector<std::vector<int>>& map) {
 }
 
 // Función para imprimir el mapa con la ruta
-void printMapWithPath(const std::vector<std::vector<int>>& map, const std::vector<Position>& path, Position start, Position goal) {
-    std::vector<std::vector<char>> visualMap(ROWS, std::vector<char>(COLS, '.'));
+void printMapWithPath(const vector<vector<int>>& map, const vector<Position>& path, Position start, Position goal) {
+    vector<vector<char>> visualMap(ROWS, vector<char>(COLS, '.'));
 
     // Colocar obstáculos en el mapa
     for (int i = 0; i < ROWS; ++i) {
@@ -203,12 +205,11 @@ void printMapWithPath(const std::vector<std::vector<int>>& map, const std::vecto
     }
 
     // Imprimir el mapa
-    std::cout << "\nMapa con la ruta:\n";
     for (const auto& row : visualMap) {
         for (char cell : row) {
-            std::cout << cell << ' ';
+            cout << cell << ' ';
         }
-        std::cout << '\n';
+        cout << '\n';
     }
 }
 
@@ -216,7 +217,7 @@ int main() {
     srand(time(0));  // Semilla para el movimiento aleatorio
 
     // Mapa de ejemplo (0 = libre, 1 = obstáculo)
-    std::vector<std::vector<int>> map(ROWS, std::vector<int>(COLS, 0));
+    vector<vector<int>> map(ROWS, vector<int>(COLS, 0));
 
     // Agregar obstáculos manualmente
     addObstacles(map);
@@ -228,19 +229,24 @@ int main() {
     bool useBFS = rand() % 100 < 50;       // 50% de probabilidad de usar BFS
     bool useDijkstra = rand() % 100 < 80;  // 80% de probabilidad de usar Dijkstra
 
-    std::vector<Position> path = calculateMove(start, goal, map, useBFS, useDijkstra);
+    vector<Position> path_lightBlue_blue = calculateMove(start, goal, map, useBFS, 0);
+    vector<Position> path_yellow_red = calculateMove(start, goal, map, 0, useDijkstra);
 
-    if (!path.empty()) {
-        std::cout << "Ruta encontrada:\n";
-        for (const Position& pos : path) {
-            std::cout << "(" << pos.row << ", " << pos.col << ")\n";
+    if (!path_lightBlue_blue.empty()) {
+        cout << "Ruta encontrada:\n";
+        for (const Position& pos : path_lightBlue_blue) {
+            cout << "(" << pos.row << ", " << pos.col << ")\n";
         }
     } else {
-        std::cout << "No se encontró una ruta válida.\n";
+        cout << "No se encontró una ruta válida.\n";
     }
+ 
 
     // Imprimir el mapa con la ruta
-    printMapWithPath(map, path, start, goal);
+    cout << "Mapa tanques azul y celeste" << endl;
+    printMapWithPath(map, path_lightBlue_blue, start, goal);
+    cout << "Mapa tanques amarillo y rojo" << endl;
+    printMapWithPath(map, path_yellow_red, start, goal);
 
     return 0;
 }
