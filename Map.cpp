@@ -1,5 +1,5 @@
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>  // Librería para renderizar texto
+#include <SDL2/SDL_ttf.h>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -19,16 +19,17 @@ const SDL_Color COLOR_PLAYER1_TANK2 = {0, 255, 255, 255};  // Cian para Tanque 2
 const SDL_Color COLOR_PLAYER2_TANK1 = {255, 0, 0, 255};    // Rojo para Tanque 1 Jugador 2
 const SDL_Color COLOR_PLAYER2_TANK2 = {255, 165, 0, 255};  // Naranja para Tanque 2 Jugador 2
 const SDL_Color COLOR_EMPTY = {255, 255, 224, 255};        // Amarillo claro para espacios vacíos
-const SDL_Color COLOR_TEXT = {0, 0, 0, 255};               // Negro para el texto
+const SDL_Color COLOR_SELECTED = {255, 255, 0, 255};       // Amarillo para el tanque seleccionado
 
 // Clase para gestionar el tablero gráfico
 class GameBoard {
 private:
 	std::vector<std::vector<char>> board;
+	std::pair<int, int> selectedTank; // Coordenadas del tanque seleccionado
 	
 public:
 	// Constructor que inicializa el tablero
-	GameBoard() {
+	GameBoard() : selectedTank({-1, -1}) {
 		board.resize(ROWS, std::vector<char>(COLS, '.'));
 		generateObstacles();
 		placeTanksInCorners('A', 'B', true);  // Jugador 1: Tanques A y B
@@ -78,6 +79,11 @@ public:
 					setRenderColor(renderer, COLOR_EMPTY);  // Casillas vacías: amarillo claro
 				}
 				
+				// Si la casilla es el tanque seleccionado
+				if (selectedTank.first == i && selectedTank.second == j) {
+					setRenderColor(renderer, COLOR_SELECTED);  // Color para el tanque seleccionado
+				}
+				
 				SDL_RenderFillRect(renderer, &tileRect);  // Dibujar casilla
 			}
 		}
@@ -86,6 +92,44 @@ public:
 	// Cambiar el color del renderer
 	void setRenderColor(SDL_Renderer* renderer, SDL_Color color) {
 		SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+	}
+	
+	// Seleccionar un tanque basado en las coordenadas del clic del ratón
+	bool selectTank(int mouseX, int mouseY) {
+		int row = mouseY / TILE_SIZE;
+		int col = mouseX / TILE_SIZE;
+		if (row >= 0 && row < ROWS && col >= 0 && col < COLS &&
+			(board[row][col] == 'A' || board[row][col] == 'B' ||
+				board[row][col] == 'C' || board[row][col] == 'D')) {
+			selectedTank = {row, col};  // Guardar las coordenadas del tanque seleccionado
+			return true;
+		}
+				return false;
+	}
+	
+	// Mover el tanque seleccionado a la casilla destino
+	bool moveSelectedTank(int mouseX, int mouseY) {
+		if (selectedTank.first == -1 || selectedTank.second == -1) {
+			return false;  // No hay tanque seleccionado
+		}
+		
+		int destRow = mouseY / TILE_SIZE;
+		int destCol = mouseX / TILE_SIZE;
+		
+		// Verificar si el movimiento es válido (adjacente y la casilla está vacía)
+		int dx = abs(destRow - selectedTank.first);
+		int dy = abs(destCol - selectedTank.second);
+		
+		if ((dx == 1 && dy == 0) || (dx == 0 && dy == 1)) {  // Movimiento adyacente
+			if (destRow >= 0 && destRow < ROWS && destCol >= 0 && destCol < COLS && board[destRow][destCol] == '.') {
+				// Mover el tanque
+				board[destRow][destCol] = board[selectedTank.first][selectedTank.second];
+				board[selectedTank.first][selectedTank.second] = '.';
+				selectedTank = {-1, -1};  // Deseleccionar el tanque después de moverlo
+				return true;
+			}
+		}
+		return false;  // Movimiento no válido
 	}
 	
 	// Contar tanques vivos de cada jugador
@@ -105,38 +149,12 @@ public:
 	}
 };
 
-// Función para renderizar el texto en pantalla
-void renderText(SDL_Renderer* renderer, TTF_Font* font, std::string text, int x, int y) {
-	SDL_Color textColor = {0, 0, 0, 255};  // Color negro para el texto
-	SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, text.c_str(), textColor);
-	SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
-	
-	SDL_Rect messageRect;
-	messageRect.x = x;
-	messageRect.y = y;
-	messageRect.w = surfaceMessage->w;
-	messageRect.h = surfaceMessage->h;
-	
-	SDL_RenderCopy(renderer, message, NULL, &messageRect);
-	
-	SDL_FreeSurface(surfaceMessage);
-	SDL_DestroyTexture(message);
-}
-
 // Inicializar SDL y ejecutar el juego
 int main(int argc, char* argv[]) {
 	SDL_Init(SDL_INIT_VIDEO);
-	TTF_Init();  // Inicializar SDL_ttf
 	
 	SDL_Window* window = SDL_CreateWindow("Tank Attack!", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-	
-	// Cargar la fuente de texto
-	TTF_Font* font = TTF_OpenFont("arial.ttf", 24);  // Asegúrate de tener esta fuente o una similar
-	if (!font) {
-		std::cerr << "Error al cargar la fuente: " << TTF_GetError() << std::endl;
-		return -1;
-	}
 	
 	GameBoard gameBoard;
 	
@@ -144,10 +162,18 @@ int main(int argc, char* argv[]) {
 	SDL_Event event;
 	
 	while (running) {
-		// Manejo de eventos (cerrar ventana)
+		// Manejo de eventos (cerrar ventana, clics del ratón)
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_QUIT) {
 				running = false;
+			}
+			else if (event.type == SDL_MOUSEBUTTONDOWN) {
+				int mouseX = event.button.x;
+				int mouseY = event.button.y;
+				
+				if (!gameBoard.selectTank(mouseX, mouseY)) {
+					gameBoard.moveSelectedTank(mouseX, mouseY);  // Si no selecciona tanque, intenta moverlo
+				}
 			}
 		}
 		
@@ -157,21 +183,10 @@ int main(int argc, char* argv[]) {
 		
 		gameBoard.render(renderer);
 		
-		// Contar tanques vivos
-		std::pair<int, int> tankCounts = gameBoard.countTanks();
-		std::string player1Text = "Jugador 1: " + std::to_string(tankCounts.first) + " tanques vivos";
-		std::string player2Text = "Jugador 2: " + std::to_string(tankCounts.second) + " tanques vivos";
-		
-		// Renderizar el texto
-		renderText(renderer, font, player1Text, 50, WINDOW_HEIGHT - 30);  // Posición del texto del Jugador 1
-		renderText(renderer, font, player2Text, 350, WINDOW_HEIGHT - 30); // Posición del texto del Jugador 2
-		
 		SDL_RenderPresent(renderer);  // Mostrar en pantalla
 	}
 	
 	// Limpiar y cerrar SDL
-	TTF_CloseFont(font);
-	TTF_Quit();
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
