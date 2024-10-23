@@ -5,6 +5,7 @@
 #include <cmath> 
 #include <ctime> // Para cálculos de trayectoria
 #include "tank_movement.cpp"
+#include "power_up.cpp"
 
 // Constantes del juego
 const int WINDOW_WIDTH = 640;
@@ -52,12 +53,18 @@ private:
     std::vector<std::pair<int, int>> bulletPath;  // Trayectoria de la bala
     std::vector<Tank> tanks;  // Lista de tanques en el juego
     Uint32 startTime;  // Tiempo de inicio del juego
+	std::vector<PowerUp> powerUps;  // Lista de Power-Ups
+    bool extraTurn = false;
+    bool movementPrecision = false;
+    bool attackPrecision = false;
+    bool attackPower = false;
 
 public:
     // Constructor que inicializa el tablero
     GameBoard() : selectedTank({-1, -1}), shootingTarget({-1, -1}), isPlayer1Turn(true), isShootingPreview(false) {
-        board.resize(ROWS, std::vector<char>(COLS, '.'));
+        board.resize(ROWS, vector<char>(COLS, '.'));
         generateObstacles();  // Generamos los obstáculos al inicio
+		generatePowerUps(powerUps, ROWS, COLS);
         // Colocamos 8 tanques y asignamos vida
         tanks.push_back(Tank('A', 0, 0, 100));  // Tanque A, Jugador 1 (BFS)
         tanks.push_back(Tank('B', 0, 1, 100));  // Tanque B, Jugador 1 (Dijkstra)
@@ -138,6 +145,7 @@ public:
         }
         updateBoard();  // Actualizamos el tablero después del daño
     }
+
 
     // Función para disparar la bala si el jugador hace clic derecho nuevamente en la misma casilla
     void shoot() {
@@ -230,7 +238,11 @@ public:
                 }
 
                 SDL_RenderFillRect(renderer, &tileRect);  // Dibujar casilla
+				for (auto& powerUp : powerUps) {
+					powerUp.render(renderer);  // Renderizar los Power-Ups en el tablero
+				}
             }
+			
         }
 
         // Dibujar la trayectoria de la bala si existe
@@ -330,10 +342,14 @@ public:
 				}
 			}
 
+
 			// Deseleccionar el tanque y actualizar el turno
 			selectedTank = {-1, -1};  // Deseleccionar el tanque
 			isPlayer1Turn = !isPlayer1Turn;  // Cambiar turno
 			updateBoard();  // Actualizar el tablero con la nueva posición
+			if (checkPowerUpCollision(powerUps, newPos.row, newPos.col, extraTurn, movementPrecision, attackPrecision, attackPower)) {
+        		cout << "Power-Up recogido.\n";
+    		}
 			return true;
 		}
 
