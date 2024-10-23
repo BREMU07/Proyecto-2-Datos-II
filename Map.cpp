@@ -2,7 +2,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <iostream>
 #include <vector>
-#include <cmath>  // Para c·lculos de trayectoria
+#include <cmath>  // Para c√°lculos de trayectoria
 
 // Constantes del juego
 const int WINDOW_WIDTH = 640;
@@ -13,286 +13,336 @@ const int TILE_SIZE = 32;
 const int OBSTACLE_PERCENTAGE = 10;
 
 // Colores para representar los objetos en el tablero
-const SDL_Color COLOR_OBSTACLE = {169, 169, 169, 255};     // Gris para obst·culos
+const SDL_Color COLOR_OBSTACLE = {169, 169, 169, 255};     // Gris para obst√°culos
 const SDL_Color COLOR_PLAYER1_TANK1 = {0, 0, 255, 255};    // Azul para Tanque 1 Jugador 1
 const SDL_Color COLOR_PLAYER1_TANK2 = {0, 255, 255, 255};  // Cian para Tanque 2 Jugador 1
 const SDL_Color COLOR_PLAYER2_TANK1 = {255, 0, 0, 255};    // Rojo para Tanque 1 Jugador 2
 const SDL_Color COLOR_PLAYER2_TANK2 = {255, 165, 0, 255};  // Naranja para Tanque 2 Jugador 2
-const SDL_Color COLOR_EMPTY = {255, 255, 224, 255};        // Amarillo claro para espacios vacÌos
+const SDL_Color COLOR_EMPTY = {255, 255, 224, 255};        // Amarillo claro para espacios vac√≠os
 const SDL_Color COLOR_SELECTED = {255, 255, 0, 255};       // Amarillo para el tanque seleccionado
 const SDL_Color COLOR_BULLET = {255, 255, 0, 255};         // Amarillo para la bala
 
-// DaÒo por tipo de tanque
-const float DAMAGE_AZUL_CELESTE = 0.25f;  // DaÒo 25%
-const float DAMAGE_NARANJA_ROJO = 0.50f;  // DaÒo 50%
+// Da√±o por tipo de tanque
+const float DAMAGE_AZUL_CELESTE = 0.25f;  // Da√±o 25%
+const float DAMAGE_NARANJA_ROJO = 0.50f;  // Da√±o 50%
 
-// Clase para gestionar el tablero gr·fico
-class GameBoard {
-private:
-	std::vector<std::vector<char>> board;
-	std::pair<int, int> selectedTank; // Coordenadas del tanque seleccionado
-	bool isPlayer1Turn;  // Controla de quiÈn es el turno
-	std::vector<std::pair<int, int>> bulletPath;  // Trayectoria de la bala
-	
-public:
-	// Constructor que inicializa el tablero
-	GameBoard() : selectedTank({-1, -1}), isPlayer1Turn(true) {
-		board.resize(ROWS, std::vector<char>(COLS, '.'));
-		generateObstacles();
-		placeTanksInCorners('A', 'B', true);  // Jugador 1: Tanques A y B
-		placeTanksInCorners('C', 'D', false); // Jugador 2: Tanques C y D
-	}
-	
-	// Generar obst·culos aleatorios en el tablero
-	void generateObstacles() {
-		srand(SDL_GetTicks());  // Semilla aleatoria
-		for (int i = 2; i < ROWS - 2; ++i) {
-			for (int j = 2; j < COLS - 2; ++j) {
-				if (rand() % 100 < OBSTACLE_PERCENTAGE) {
-					board[i][j] = 'O';  // Obst·culo
-				}
-			}
-		}
-	}
-	
-	// Colocar tanques en las esquinas del tablero
-	void placeTanksInCorners(char tankType1, char tankType2, bool topHalf) {
-		if (topHalf) {
-			board[0][0] = tankType1; board[0][1] = tankType1;
-			board[0][COLS-2] = tankType2; board[0][COLS-1] = tankType2;
-		} else {
-			board[ROWS-1][0] = tankType1; board[ROWS-1][1] = tankType1;
-			board[ROWS-1][COLS-2] = tankType2; board[ROWS-1][COLS-1] = tankType2;
-		}
-	}
-	
-	// Dibujar el tablero en pantalla usando SDL2
-	void render(SDL_Renderer* renderer) {
-		for (int i = 0; i < ROWS; ++i) {
-			for (int j = 0; j < COLS; ++j) {
-				SDL_Rect tileRect = { j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE };
-				
-				if (board[i][j] == 'O') {
-					setRenderColor(renderer, COLOR_OBSTACLE);  // Obst·culos gris
-				} else if (board[i][j] == 'A') {
-					setRenderColor(renderer, COLOR_PLAYER1_TANK1);  // Jugador 1, tanque A: azul
-				} else if (board[i][j] == 'B') {
-					setRenderColor(renderer, COLOR_PLAYER1_TANK2);  // Jugador 1, tanque B: cian
-				} else if (board[i][j] == 'C') {
-					setRenderColor(renderer, COLOR_PLAYER2_TANK1);  // Jugador 2, tanque C: rojo
-				} else if (board[i][j] == 'D') {
-					setRenderColor(renderer, COLOR_PLAYER2_TANK2);  // Jugador 2, tanque D: naranja
-				} else {
-					setRenderColor(renderer, COLOR_EMPTY);  // Casillas vacÌas: amarillo claro
-				}
-				
-				// Si la casilla es el tanque seleccionado
-				if (selectedTank.first == i && selectedTank.second == j) {
-					setRenderColor(renderer, COLOR_SELECTED);  // Color para el tanque seleccionado
-				}
-				
-				SDL_RenderFillRect(renderer, &tileRect);  // Dibujar casilla
-			}
-		}
-		
-		// Dibujar la trayectoria de la bala si existe
-		if (!bulletPath.empty()) {
-			setRenderColor(renderer, COLOR_BULLET);  // Color de la bala
-			for (auto& point : bulletPath) {
-				SDL_Rect bulletRect = { point.second * TILE_SIZE, point.first * TILE_SIZE, TILE_SIZE, TILE_SIZE };
-				SDL_RenderFillRect(renderer, &bulletRect);  // Dibujar la bala en su trayectoria
-			}
-		}
-	}
-	
-	// Cambiar el color del renderer
-	void setRenderColor(SDL_Renderer* renderer, SDL_Color color) {
-		SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-	}
-	
-	// Seleccionar un tanque basado en las coordenadas del clic del ratÛn
-	bool selectTank(int mouseX, int mouseY) {
-		int row = mouseY / TILE_SIZE;
-		int col = mouseX / TILE_SIZE;
-		if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
-			// Verificar si es el turno correcto
-			if (isPlayer1Turn && (board[row][col] == 'A' || board[row][col] == 'B')) {
-				selectedTank = {row, col};  // Seleccionar tanque del Jugador 1
-				return true;
-			} else if (!isPlayer1Turn && (board[row][col] == 'C' || board[row][col] == 'D')) {
-				selectedTank = {row, col};  // Seleccionar tanque del Jugador 2
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	// Mover el tanque seleccionado a la casilla destino
-	bool moveSelectedTank(int mouseX, int mouseY) {
-		if (selectedTank.first == -1 || selectedTank.second == -1) {
-			return false;  // No hay tanque seleccionado
-		}
-		
-		int destRow = mouseY / TILE_SIZE;
-		int destCol = mouseX / TILE_SIZE;
-		
-		// Verificar si el movimiento es v·lido (adjacente y la casilla est· vacÌa)
-		int dx = abs(destRow - selectedTank.first);
-		int dy = abs(destCol - selectedTank.second);
-		
-		if ((dx == 1 && dy == 0) || (dx == 0 && dy == 1)) {  // Movimiento adyacente
-			if (destRow >= 0 && destRow < ROWS && destCol >= 0 && destCol < COLS && board[destRow][destCol] == '.') {
-				// Mover el tanque
-				board[destRow][destCol] = board[selectedTank.first][selectedTank.second];
-				board[selectedTank.first][selectedTank.second] = '.';
-				selectedTank = {-1, -1};  // Deseleccionar el tanque despuÈs de moverlo
-				isPlayer1Turn = !isPlayer1Turn;  // Alternar turno
-				bulletPath.clear();  // Limpiar trayectoria de la bala
-				return true;
-			}
-		}
-		return false;  // Movimiento no v·lido
-	}
-	
-	// Disparar desde el tanque seleccionado hacia un punto de destino
-	void shoot(int mouseX, int mouseY) {
-		if (selectedTank.first == -1 || selectedTank.second == -1) return;  // No hay tanque seleccionado
-		
-		int destRow = mouseY / TILE_SIZE;
-		int destCol = mouseX / TILE_SIZE;
-		
-		// Limpiar trayectoria anterior
-		bulletPath.clear();
-		
-		// Aplicar lÌnea de vista (algoritmo de Bresenham para trazar lÌnea)
-		int x1 = selectedTank.second;
-		int y1 = selectedTank.first;
-		int x2 = destCol;
-		int y2 = destRow;
-		
-		int dx = abs(x2 - x1);
-		int dy = abs(y2 - y1);
-		int sx = (x1 < x2) ? 1 : -1;
-		int sy = (y1 < y2) ? 1 : -1;
-		int err = dx - dy;
-		
-		while (true) {
-			bulletPath.push_back({y1, x1});
-			
-			if (x1 == x2 && y1 == y2) break;
-			
-			int e2 = 2 * err;
-			if (e2 > -dy) {
-				err -= dy;
-				x1 += sx;
-			}
-			if (e2 < dx) {
-				err += dx;
-				y1 += sy;
-			}
-			
-			// Verificar si golpea un obst·culo
-			if (board[y1][x1] == 'O') break;
-			
-			// Verificar si golpea un tanque enemigo
-			if ((board[y1][x1] == 'A' || board[y1][x1] == 'B' || board[y1][x1] == 'C' || board[y1][x1] == 'D') && !(y1 == selectedTank.first && x1 == selectedTank.second)) {
-				applyDamage(y1, x1);
-				break;
-			}
-			
-			// Verificar si golpea una pared y hacer rebote (implementa tu ·ngulo de rebote aquÌ)
-			if (x1 <= 0 || x1 >= COLS - 1 || y1 <= 0 || y1 >= ROWS - 1) {
-				// Implementa rebote aquÌ
-				break;  // Por simplicidad, detiene el disparo al golpear una pared
-			}
-		}
-	}
-	
-	// Aplicar daÒo a un tanque
-	void applyDamage(int row, int col) {
-		if (board[row][col] == 'A' || board[row][col] == 'B') {
-			std::cout << "Tanque azul/celeste recibiÛ " << DAMAGE_AZUL_CELESTE * 100 << "% de daÒo.\n";
-		} else if (board[row][col] == 'C' || board[row][col] == 'D') {
-			std::cout << "Tanque rojo/naranja recibiÛ " << DAMAGE_NARANJA_ROJO * 100 << "% de daÒo.\n";
-		}
-	}
+// Estructura para definir un tanque
+struct Tank {
+    char type;  // Tipo de tanque (A, B, C, D)
+    int row, col;  // Posici√≥n del tanque
+    float health;  // Vida del tanque
+
+    Tank(char t, int r, int c, float h) : type(t), row(r), col(c), health(h) {}
 };
 
-// FunciÛn para renderizar el texto en pantalla
+// Clase para gestionar el tablero gr√°fico
+class GameBoard {
+private:
+    std::vector<std::vector<char>> board;
+    std::pair<int, int> selectedTank;       // Coordenadas del tanque seleccionado
+    std::pair<int, int> shootingTarget;     // Casilla objetivo del disparo
+    bool isPlayer1Turn;                     // Controla de qui√©n es el turno
+    bool isShootingPreview;                 // Indica si se est√° mostrando la trayectoria
+    std::vector<std::pair<int, int>> bulletPath;  // Trayectoria de la bala
+    std::vector<Tank> tanks;  // Lista de tanques en el juego
+
+public:
+    // Constructor que inicializa el tablero
+    GameBoard() : selectedTank({-1, -1}), shootingTarget({-1, -1}), isPlayer1Turn(true), isShootingPreview(false) {
+        board.resize(ROWS, std::vector<char>(COLS, '.'));
+        generateObstacles();  // Generamos los obst√°culos al inicio
+        // Colocamos 8 tanques y asignamos vida
+        tanks.push_back(Tank('A', 0, 0, 100));  // Tanque A, Jugador 1
+        tanks.push_back(Tank('A', 0, 1, 100));  // Segundo Tanque A, Jugador 1
+        tanks.push_back(Tank('B', 0, COLS - 2, 100));  // Tanque B, Jugador 1
+        tanks.push_back(Tank('B', 0, COLS - 1, 100));  // Segundo Tanque B, Jugador 1
+
+        tanks.push_back(Tank('C', ROWS - 1, 0, 100));  // Tanque C, Jugador 2
+        tanks.push_back(Tank('C', ROWS - 1, 1, 100));  // Segundo Tanque C, Jugador 2
+        tanks.push_back(Tank('D', ROWS - 1, COLS - 2, 100));  // Tanque D, Jugador 2
+        tanks.push_back(Tank('D', ROWS - 1, COLS - 1, 100));  // Segundo Tanque D, Jugador 2
+        updateBoard();
+    }
+
+	bool getIsShootingPreview() { return isShootingPreview; }
+    // Funci√≥n para actualizar la posici√≥n de los tanques en el tablero sin eliminar obst√°culos
+    void updateBoard() {
+        // Limpiamos las posiciones de tanques en el tablero, sin tocar los obst√°culos
+        for (int i = 0; i < ROWS; ++i) {
+            for (int j = 0; j < COLS; ++j) {
+                if (board[i][j] != 'O') {  // No tocamos las casillas con obst√°culos
+                    board[i][j] = '.';
+                }
+            }
+        }
+        // Actualizamos la posici√≥n de los tanques
+        for (auto &tank : tanks) {
+            if (tank.health > 0) {
+                board[tank.row][tank.col] = tank.type;  // Solo actualizamos tanques con vida
+            }
+        }
+    }
+
+    // Funci√≥n para aplicar da√±o a un tanque
+    void applyDamage(int row, int col) {
+        for (auto &tank : tanks) {
+            if (tank.row == row && tank.col == col && tank.health > 0) {
+                float damage = (tank.type == 'A' || tank.type == 'B') ? DAMAGE_AZUL_CELESTE : DAMAGE_NARANJA_ROJO;
+                tank.health -= damage * 100;  // Reducimos la vida del tanque
+                std::cout << "Tanque " << tank.type << " recibi√≥ " << damage * 100 << "% de da√±o. Vida restante: " << tank.health << "\n";
+                if (tank.health <= 0) {
+                    board[tank.row][tank.col] = '.';  // Eliminar tanque del tablero
+                    std::cout << "Tanque " << tank.type << " ha sido destruido.\n";
+                }
+                break;
+            }
+        }
+        updateBoard();  // Actualizamos el tablero despu√©s del da√±o
+    }
+
+    // Funci√≥n para disparar la bala si el jugador hace clic derecho nuevamente en la misma casilla
+    void shoot() {
+        if (isShootingPreview && shootingTarget.first != -1 && shootingTarget.second != -1) {
+            applyDamage(shootingTarget.first, shootingTarget.second);
+            isShootingPreview = false;  // Desactivar previsualizaci√≥n
+            shootingTarget = {-1, -1};  // Limpiar el objetivo de disparo
+            bulletPath.clear();         // Limpiar la trayectoria de la bala
+            isPlayer1Turn = !isPlayer1Turn;  // Cambiar el turno despu√©s del disparo
+        }
+    }
+
+    // Mostrar la trayectoria para el disparo
+    void previewShoot(int mouseX, int mouseY) {
+        if (selectedTank.first == -1 || selectedTank.second == -1) return;  // No hay tanque seleccionado
+
+        int destRow = mouseY / TILE_SIZE;
+        int destCol = mouseX / TILE_SIZE;
+
+        // Limpiar trayectoria anterior
+        bulletPath.clear();
+
+        // Aplicar l√≠nea de vista (algoritmo de Bresenham para trazar l√≠nea)
+        int x1 = selectedTank.second;
+        int y1 = selectedTank.first;
+        int x2 = destCol;
+        int y2 = destRow;
+
+        int dx = abs(x2 - x1);
+        int dy = abs(y2 - y1);
+        int sx = (x1 < x2) ? 1 : -1;
+        int sy = (y1 < y2) ? 1 : -1;
+        int err = dx - dy;
+
+        while (true) {
+            bulletPath.push_back({y1, x1});
+
+            if (x1 == x2 && y1 == y2) break;
+
+            int e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x1 += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y1 += sy;
+            }
+
+            // Verificar si golpea un obst√°culo
+            if (board[y1][x1] == 'O') break;
+
+            // Verificar si golpea una pared o el tanque enemigo
+            if ((board[y1][x1] == 'A' || board[y1][x1] == 'B' || board[y1][x1] == 'C' || board[y1][x1] == 'D') && !(y1 == selectedTank.first && x1 == selectedTank.second)) {
+                break;
+            }
+        }
+
+        // Guardar la casilla objetivo
+        shootingTarget = {destRow, destCol};
+        isShootingPreview = true;  // Marcar que estamos en modo de previsualizaci√≥n
+    }
+
+    // Dibujar el tablero en pantalla usando SDL2
+    void render(SDL_Renderer* renderer) {
+        for (int i = 0; i < ROWS; ++i) {
+            for (int j = 0; j < COLS; ++j) {
+                SDL_Rect tileRect = { j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+
+                if (board[i][j] == 'O') {
+                    setRenderColor(renderer, COLOR_OBSTACLE);  // Obst√°culos gris
+                } else if (board[i][j] == 'A' || board[i][j] == 'B' || board[i][j] == 'C' || board[i][j] == 'D') {
+                    // Si el tanque est√° vivo, lo dibujamos
+                    for (auto &tank : tanks) {
+                        if (tank.row == i && tank.col == j && tank.health > 0) {
+                            if (tank.type == 'A') setRenderColor(renderer, COLOR_PLAYER1_TANK1);
+                            else if (tank.type == 'B') setRenderColor(renderer, COLOR_PLAYER1_TANK2);
+                            else if (tank.type == 'C') setRenderColor(renderer, COLOR_PLAYER2_TANK1);
+                            else if (tank.type == 'D') setRenderColor(renderer, COLOR_PLAYER2_TANK2);
+                            break;
+                        }
+                    }
+                } else {
+                    setRenderColor(renderer, COLOR_EMPTY);  // Casillas vac√≠as: amarillo claro
+                }
+
+                // Si la casilla es el tanque seleccionado
+                if (selectedTank.first == i && selectedTank.second == j) {
+                    setRenderColor(renderer, COLOR_SELECTED);  // Color para el tanque seleccionado
+                }
+
+                SDL_RenderFillRect(renderer, &tileRect);  // Dibujar casilla
+            }
+        }
+
+        // Dibujar la trayectoria de la bala si existe
+        if (!bulletPath.empty()) {
+            setRenderColor(renderer, COLOR_BULLET);  // Color de la bala
+            for (auto& point : bulletPath) {
+                SDL_Rect bulletRect = { point.second * TILE_SIZE, point.first * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+                SDL_RenderFillRect(renderer, &bulletRect);  // Dibujar la bala en su trayectoria
+            }
+        }
+    }
+
+    // Cambiar el color del renderer
+    void setRenderColor(SDL_Renderer* renderer, SDL_Color color) {
+        SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+    }
+
+    // Seleccionar un tanque basado en las coordenadas del clic del rat√≥n
+    bool selectTank(int mouseX, int mouseY) {
+        int row = mouseY / TILE_SIZE;
+        int col = mouseX / TILE_SIZE;
+        if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+            // Verificar si es el turno correcto
+            if (isPlayer1Turn && (board[row][col] == 'A' || board[row][col] == 'B')) {
+                selectedTank = {row, col};  // Seleccionar tanque del Jugador 1
+                return true;
+            } else if (!isPlayer1Turn && (board[row][col] == 'C' || board[row][col] == 'D')) {
+                selectedTank = {row, col};  // Seleccionar tanque del Jugador 2
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Mover el tanque seleccionado a la casilla destino
+    bool moveSelectedTank(int mouseX, int mouseY) {
+        if (selectedTank.first == -1 || selectedTank.second == -1) {
+            return false;  // No hay tanque seleccionado
+        }
+
+        int destRow = mouseY / TILE_SIZE;
+        int destCol = mouseX / TILE_SIZE;
+
+        // Verificar si el movimiento es v√°lido (adjacente y la casilla est√° vac√≠a)
+        int dx = abs(destRow - selectedTank.first);
+        int dy = abs(destCol - selectedTank.second);
+
+        if ((dx == 1 && dy == 0) || (dx == 0 && dy == 1)) {  // Movimiento adyacente
+            if (destRow >= 0 && destRow < ROWS && destCol >= 0 && destCol < COLS && board[destRow][destCol] == '.') {
+                // Mover el tanque manteniendo su tipo
+                for (auto &tank : tanks) {
+                    if (tank.row == selectedTank.first && tank.col == selectedTank.second) {
+                        tank.row = destRow;
+                        tank.col = destCol;
+                        break;
+                    }
+                }
+                updateBoard();  // Actualizar el tablero con la nueva posici√≥n
+                selectedTank = {-1, -1};  // Deseleccionar el tanque despu√©s de moverlo
+                isPlayer1Turn = !isPlayer1Turn;  // Alternar turno
+                bulletPath.clear();  // Limpiar trayectoria de la bala
+                return true;
+            }
+        }
+        return false;  // Movimiento no v√°lido
+    }
+
+    // Generar obst√°culos aleatorios en el tablero
+    void generateObstacles() {
+        srand(SDL_GetTicks());  // Semilla aleatoria
+        for (int i = 2; i < ROWS - 2; ++i) {
+            for (int j = 2; j < COLS - 2; ++j) {
+                if (rand() % 100 < OBSTACLE_PERCENTAGE) {
+                    board[i][j] = 'O';  // Obst√°culo
+                }
+            }
+        }
+    }
+};
+
+// Funci√≥n para renderizar el texto en pantalla
 void renderText(SDL_Renderer* renderer, TTF_Font* font, std::string text, int x, int y) {
-	SDL_Color textColor = {0, 0, 0, 255};  // Color negro para el texto
-	SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, text.c_str(), textColor);
-	SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
-	
-	SDL_Rect messageRect;
-	messageRect.x = x;
-	messageRect.y = y;
-	messageRect.w = surfaceMessage->w;
-	messageRect.h = surfaceMessage->h;
-	
-	SDL_RenderCopy(renderer, message, NULL, &messageRect);
-	
-	SDL_FreeSurface(surfaceMessage);
-	SDL_DestroyTexture(message);
+    SDL_Color textColor = {0, 0, 0, 255};  // Color negro para el texto
+    SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, text.c_str(), textColor);
+    SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
+
+    SDL_Rect messageRect;
+    messageRect.x = x;
+    messageRect.y = y;
+    messageRect.w = surfaceMessage->w;
+    messageRect.h = surfaceMessage->h;
+
+    SDL_RenderCopy(renderer, message, NULL, &messageRect);
+
+    SDL_FreeSurface(surfaceMessage);
+    SDL_DestroyTexture(message);
 }
 
 // Inicializar SDL y ejecutar el juego
 int main(int argc, char* argv[]) {
-	SDL_Init(SDL_INIT_VIDEO);
-	TTF_Init();  // Inicializar SDL_ttf
-	
-	SDL_Window* window = SDL_CreateWindow("Tank Attack!", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
-	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-	
-	// Cargar la fuente de texto
-	TTF_Font* font = TTF_OpenFont("arial.ttf", 24);  // Aseg˙rate de tener esta fuente o una similar
-	if (!font) {
-		std::cerr << "Error al cargar la fuente: " << TTF_GetError() << std::endl;
-		return -1;
-	}
-	
-	GameBoard gameBoard;
-	
-	bool running = true;
-	SDL_Event event;
-	
-	while (running) {
-		// Manejo de eventos (cerrar ventana, clics del ratÛn)
-		while (SDL_PollEvent(&event)) {
-			if (event.type == SDL_QUIT) {
-				running = false;
-			}
-			else if (event.type == SDL_MOUSEBUTTONDOWN) {
-				int mouseX = event.button.x;
-				int mouseY = event.button.y;
-				
-				if (!gameBoard.selectTank(mouseX, mouseY)) {
-					gameBoard.moveSelectedTank(mouseX, mouseY);  // Si no selecciona tanque, intenta moverlo
-				} else {
-					gameBoard.shoot(mouseX, mouseY);  // Disparar
-				}
-			}
-		}
-		
-		// Dibujar tablero
-		SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);  // Fondo blanco
-		SDL_RenderClear(renderer);
-		
-		gameBoard.render(renderer);
-		
-		// Mostrar el turno
-		std::string turnText = gameBoard.getIsPlayer1Turn() ? "Turno: Jugador 1" : "Turno: Jugador 2";
-		renderText(renderer, font, turnText, 50, WINDOW_HEIGHT - 30);  // PosiciÛn del texto del turno
-		
-		SDL_RenderPresent(renderer);  // Mostrar en pantalla
-	}
-	
-	// Limpiar y cerrar SDL
-	TTF_CloseFont(font);
-	TTF_Quit();
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
-	
-	return 0;
+    SDL_Init(SDL_INIT_VIDEO);
+    TTF_Init();  // Inicializar SDL_ttf
+
+    SDL_Window* window = SDL_CreateWindow("Tank Attack!", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+    GameBoard gameBoard;
+
+    bool running = true;
+    SDL_Event event;
+
+    while (running) {
+        // Manejo de eventos (cerrar ventana, clics del rat√≥n)
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = false;
+            }
+            else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                int mouseX = event.button.x;
+                int mouseY = event.button.y;
+
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    // Clic izquierdo: Mover tanque
+                    if (!gameBoard.selectTank(mouseX, mouseY)) {
+                        gameBoard.moveSelectedTank(mouseX, mouseY);  // Si no selecciona tanque, intenta moverlo
+                    }
+                } else if (event.button.button == SDL_BUTTON_RIGHT) {
+                    // Clic derecho: Ver o confirmar disparo
+                    if (gameBoard.getIsShootingPreview()) {
+                        gameBoard.shoot();  // Si ya est√° en modo de previsualizaci√≥n, dispara
+                    } else {
+                        gameBoard.previewShoot(mouseX, mouseY);  // Previsualiza la trayectoria
+                    }
+                }
+            }
+        }
+
+        // Dibujar tablero
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);  // Fondo blanco
+        SDL_RenderClear(renderer);
+
+        gameBoard.render(renderer);
+
+        SDL_RenderPresent(renderer);  // Mostrar en pantalla
+    }
+
+    // Limpiar y cerrar SDL
+    TTF_Quit();
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    return 0;
 }
